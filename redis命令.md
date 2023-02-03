@@ -18,6 +18,14 @@ auth 123456
 - EXPIRE：给一个key设置有效期，有效期到期时该key会被自动删除
 - TTL：查看一个KEY的剩余有效期
 
+```shell
+# 暴力删除带有特定前缀的所有key
+redis-cli -h 127.0.0.1 -a 123456 keys "login:token:*" | xargs redis-cli -h 127.0.0.1 -a 123456 del
+
+# 通过SCAN方式删除
+redis-cli --scan --pattern "login:token:*" | xargs -L 2000 redis-cli del
+```
+
 ## 2.2.1.String类型
 
 可以通过给key添加前缀加以区分，不过这个前缀不是随便加的，有一定的规范：
