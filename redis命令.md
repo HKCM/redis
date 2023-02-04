@@ -53,6 +53,11 @@ String的常见命令有：
 - SETNX：添加一个String类型的键值对，前提是这个key不存在，否则不执行
 - SETEX：添加一个String类型的键值对，并且指定有效期
 
+```shell
+# 设置互斥锁 NX表示互斥 EX设置超时时间
+SET lock thread1 NX EX 10
+```
+
 ## 2.2.2 Hash类型
 
 Hash类型，也叫散列，其value是一个无序字典，类似于Java中的HashMap结构。
