@@ -8,6 +8,7 @@ import com.hmdp.service.IShopService;
 import com.hmdp.utils.CacheClient;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.util.concurrent.TimeUnit;
@@ -181,6 +182,7 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
 //
 //    }
     @Override
+    @Transactional
     public Result updateShop(Shop shop) {
         Long id = shop.getId();
 
