@@ -71,7 +71,7 @@ public class CacheClient {
 
         if (r == null) {
             // 如果数据库中没有 将空值写入缓存 缓解缓存穿透问题
-            stringRedisTemplate.opsForValue().set(key, "", time, unit);
+            stringRedisTemplate.opsForValue().set(key, "", CACHE_NULL_TTL, TimeUnit.MINUTES);
             return null;
         }
 
