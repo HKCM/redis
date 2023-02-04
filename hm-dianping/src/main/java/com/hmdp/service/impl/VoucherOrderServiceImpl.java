@@ -79,13 +79,13 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
 
 //        // 创建锁对象 这是自己实现的锁对象
-//        SimpleRedisLock simpleRedisLock = new SimpleRedisLock("order" + userId, stringRedisTemplate);
+//        SimpleRedisLock lock = new SimpleRedisLock("order" + userId, stringRedisTemplate);
 //
 //        // 获取全局唯一锁
-//        boolean isLock = simpleRedisLock.tryLock(10);
+//        boolean isLock = lock.tryLock(10);
 
         // 通过RedissonClient创建锁
-        RLock lock = redissonClient.getLock("order" + userId);
+        RLock lock = redissonClient.getLock("lock:order" + userId);
         boolean isLock = lock.tryLock();
 
         if (!isLock){
@@ -99,7 +99,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             return proxy.createVoucher(voucherId);
         } finally {
             // 释放锁
-            simpleRedisLock.unLock();
+            lock.unlock();
         }
     }
 
