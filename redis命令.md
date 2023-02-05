@@ -2,7 +2,7 @@
 # 连接
 ```shell
 # 通过电脑自带的redis-cli进行连接
-redis-cli -h 127.0.0.1 -a 123456
+redis-cli -h 127.0.0.1 -a 123456 --raw
 # 或者先连接再认证
 redis-cli -h 127.0.0.1
 auth 123456
@@ -28,18 +28,7 @@ redis-cli --scan --pattern "login:token:*" | xargs -L 2000 redis-cli del
 
 ## 2.2.1.String类型
 
-可以通过给key添加前缀加以区分，不过这个前缀不是随便加的，有一定的规范：
-
-Redis的key允许有多个单词形成层级结构，多个单词之间用':'隔开，格式如下：
-
-```
-项目名:业务名:类型:id
-```
-
-例如项目名称叫 shop，有user和product两种不同类型的数据，可以这样定义key：
-
-- user相关的key：**shop:user:1**
-- product相关的key：**shop:product:1**
+Redis的key允许有多个单词形成层级结构，可以通过给key添加前缀加以区分
 
 String的常见命令有：
 
@@ -118,24 +107,6 @@ Set的常见命令有：
 - SMEMBERS：获取set中的所有元素
 - SINTER key1 key2 ... ：求key1与key2的交集
 
-
-练习：
-
-1. 将下列数据用Redis的Set集合来存储：
-
-   - 张三的好友有：李四、王五、赵六
-   - 李四的好友有：王五、麻子、二狗
-
-2. 利用Set的命令实现下列功能：
-
-   - 计算张三的好友有几人
-   - 计算张三和李四有哪些共同好友
-   - 查询哪些人是张三的好友却不是李四的好友
-   - 查询张三和李四的好友总共有哪些人
-   - 判断李四是否是张三的好友
-   - 判断张三是否是李四的好友
-   - 将李四从张三的好友列表中移除
-
 ## 2.2.5 SortedSet类型
 
 Redis的SortedSet是一个可排序的set集合，与Java中的TreeSet有些类似，但底层数据结构却差别很大。SortedSet中的每一个元素都带有一个score属性，可以基于score属性对元素排序，底层的实现是一个跳表（SkipList）加 hash表。
@@ -165,6 +136,71 @@ SortedSet的常见命令有：
 
 - **升序**获取sorted set 中的指定元素的排名：ZRANK key member
 - **降序**获取sorted set 中的指定元素的排名：ZREVRANK key member
+
+## 2.2.6 基于Stream的消息队列
+
+```shell
+redis> XADD mystream * name Sara surname OConnor
+"1675577014682-0"
+redis> XADD mystream * field1 value1 field2 value2 field3 value3
+"1675577014683-0"
+redis> XLEN mystream
+(integer) 2
+redis> XRANGE mystream - +
+1) 1) "1675577014682-0"
+   2) 1) "name"
+      2) "Sara"
+      3) "surname"
+      4) "OConnor"
+2) 1) "1675577014683-0"
+   2) 1) "field1"
+      2) "value1"
+      3) "field2"
+      4) "value2"
+      5) "field3"
+      6) "value3"
+```
+
+## 2.2.7 基于Stream的消息队列-消费者组
+
+创建消费者组: `XGROUP CREATE s1 g1 0`
+- key:队列名称
+- groupName:消费者组名称
+- ID:起始ID标示,$代表队列中最后一个消息,O则代表队列中第一个消息
+- MKSTREAM:队列不存在时自动创建队列
+
+其它常见命令:
+```shell
+# 删除指定的消费者组
+XGROUP DESTORY key groupName
+
+# 给指定的消费者组添加消费者
+XGROUP CREATECONSUMER key groupname consumername
+
+# 删除消费者组中的指定消费者
+XGROUP DELCONSUMER key groupname consumername
+```
+
+消费者组读消息
+```shell
+XREADGROUP GROUP g1 consumer COUNT 1 BLOCK 2000 STREAMS s1 >
+```
+- group：消费组名称
+- consumer：消费者名称，如果消费者不存在，会自动创建一个消费者 count：本次查询的最大数量
+- BL0CK milliseconds：当没有消息时最长等待时间
+- NOACK：无需手动ACK，获取到消息后自动确认
+- STREAMS key：指定队列名称
+- ID：获取消息的起始ID： “>“：从下一个未消费的消息开始
+
+消息确认返回
+```shell
+XACK s1 g1 ID [ID..]
+```
+
+查看pending-list
+```shell
+
+```
 
 
 # Redis的Java客户端-Jedis
@@ -465,8 +501,6 @@ SpringDataRedis的使用步骤：
 * 引入spring-boot-starter-data-redis依赖
 * 在application.yml配置Redis信息
 * 注入RedisTemplate
-
-
 
 ### 6.2 .数据序列化器
 
