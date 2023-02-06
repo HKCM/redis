@@ -11,6 +11,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 
 import javax.annotation.Resource;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -73,11 +74,32 @@ class HmDianPingApplicationTests {
                 // 先将坐标加入Location集合 一次性提交
                 locations.add(new RedisGeoCommands.GeoLocation<>(
                         shop.getId().toString(),
-                        new Point(shop.getX(),shop.getY())
+                        new Point(shop.getX(), shop.getY())
                 ));
             }
             stringRedisTemplate.opsForGeo().add(key, locations);
         }
+    }
+
+    // 统计UV
+    @Test
+    void testHyperLogLog() {
+        String key = "hll1";
+
+        // 准备数组
+        String[] users = new String[1000];
+        int index = 0;
+        for (int i = 0; i < 100000; i++) {
+            users[index++] = "user_" + i;
+            if (index == 1000){
+                index =0;
+                stringRedisTemplate.opsForHyperLogLog().add(key,users);
+            }
+        }
+
+        Long size = stringRedisTemplate.opsForHyperLogLog().size(key);
+        System.out.println("size: " + size);
+
     }
 
 }
