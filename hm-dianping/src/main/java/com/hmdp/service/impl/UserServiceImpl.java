@@ -14,6 +14,7 @@ import com.hmdp.service.IUserService;
 import com.hmdp.utils.RegexUtils;
 import com.hmdp.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.connection.BitFieldSubCommands;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +23,7 @@ import javax.servlet.http.HttpSession;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -153,6 +155,56 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         // TODO 可以报保存信息写入到数据库持久化
 
         return Result.ok();
+    }
+
+    /**
+     * 签到统计功能
+     * @return
+     */
+    @Override
+    public Result signCount() {
+
+        // 获取用户key
+        Long userId = UserHolder.getUser().getId();
+
+        LocalDateTime now = LocalDateTime.now();
+        String keySuffix = now.format(DateTimeFormatter.ofPattern("yyyy:MM"));
+
+        String key = USER_SIGN_KEY + userId + keySuffix;
+        // 获取当天
+        int dayOfMonth = now.getDayOfMonth();
+
+        // 获取签到的二进制bit的十进制返回
+        List<Long> result = stringRedisTemplate.opsForValue()
+                .bitField(key, BitFieldSubCommands.create()
+                        .get(BitFieldSubCommands.BitFieldType.unsigned(dayOfMonth)).valueAt(0));
+
+        // 如果用户从来没签到则为空
+        if (result == null || result.isEmpty()) {
+            return Result.ok(0);
+        }
+
+        // 用户这个月没签到 num为0
+        Long num = result.get(0);
+        if (num == null || num ==0){
+            return Result.ok(0);
+        }
+        // 从今天开始统计连续签到天数
+        int count = 0;
+        while (true){
+
+            // 与1做与运算 得到最后一个bit位 判断是否为0
+            if ((num & 1) == 0) {
+                break;
+            } else {
+                count++;
+            }
+
+            // 把数字右移1位
+            num >>>= 1;
+        }
+
+        return Result.ok(count);
     }
 
     private User createUserWithPhone(String phone) {
