@@ -12,12 +12,15 @@ import com.hmdp.entity.User;
 import com.hmdp.mapper.UserMapper;
 import com.hmdp.service.IUserService;
 import com.hmdp.utils.RegexUtils;
+import com.hmdp.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpSession;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -51,7 +54,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         String code = RandomUtil.randomNumbers(6);
 
         // 模拟发送验证码
-        log.debug("验证码发送成功，验证码：{}",code);
+        log.debug("验证码发送成功，验证码：{}", code);
 
         // 在session中保存验证码
         // session.setAttribute("code",code);
@@ -98,9 +101,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         String token = UUID.randomUUID().toString(true);
 
         // 将userDTO转为map对象方便一次性存入redis
-        UserDTO userDTO = BeanUtil.copyProperties(user,UserDTO.class);
+        UserDTO userDTO = BeanUtil.copyProperties(user, UserDTO.class);
 
-        Map<String, Object> userMap = BeanUtil.beanToMap(userDTO,new HashMap<>(),
+        Map<String, Object> userMap = BeanUtil.beanToMap(userDTO, new HashMap<>(),
                 CopyOptions.create()
                         .setIgnoreCase(true)
                         .setFieldValueEditor((fieldName, fieldValue) -> fieldValue.toString()));
@@ -109,7 +112,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
         stringRedisTemplate.opsForHash().putAll(tokenKey, userMap);
 
-        stringRedisTemplate.expire(tokenKey,LOGIN_USER_TTL,TimeUnit.MINUTES);
+        stringRedisTemplate.expire(tokenKey, LOGIN_USER_TTL, TimeUnit.MINUTES);
 
         return Result.ok(token);
     }
@@ -126,6 +129,30 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         UserDTO userDTO = BeanUtil.copyProperties(user, UserDTO.class);
 
         return Result.ok(userDTO);
+    }
+
+    /**
+     * 用户签到功能
+     *
+     * @return
+     */
+    @Override
+    public Result sign() {
+        // 获取用户key
+        Long userId = UserHolder.getUser().getId();
+
+        LocalDateTime now = LocalDateTime.now();
+        String keySuffix = now.format(DateTimeFormatter.ofPattern("yyyy:MM"));
+
+        String key = USER_SIGN_KEY + userId + keySuffix;
+        // 获取当天
+        int dayOfMonth = now.getDayOfMonth();
+
+        // 按位进行签到保存
+        stringRedisTemplate.opsForValue().setBit(key, dayOfMonth - 1, true);
+        // TODO 可以报保存信息写入到数据库持久化
+
+        return Result.ok();
     }
 
     private User createUserWithPhone(String phone) {
